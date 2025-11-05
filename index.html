@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore di Citazioni Ispiratrici</title>
+    <!-- Carica Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Setup base e font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Sfondo scuro per un look elegante */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            color: #ffffff;
+        }
+
+        /* Stile Card e Ombre */
+        .quote-card {
+            background-color: #161b22; /* Colore più scuro della card */
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Curva smooth per le transizioni */
+            max-width: 95%; 
+            width: 550px;
+        }
+
+        /* Stile Pulsante principale (Gradient) */
+        .generate-btn {
+            background: linear-gradient(90deg, #4c51bf, #6b46c1); /* Gradiente viola/blu */
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        .generate-btn:hover {
+            box-shadow: 0 4px 15px rgba(107, 70, 193, 0.6); /* Ombra al passaggio del mouse */
+            transform: scale(1.03);
+        }
+
+        /* Stile Pulsante secondario (Copia) */
+        .copy-btn {
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #38a169; /* Verde al passaggio del mouse */
+            color: #fff;
+        }
+
+        /* Animazione per la Citazione */
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Popup di notifica (personalizzato) */
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            background-color: #38a169;
+            color: white;
+            border-radius: 9999px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="quote-card p-6 sm:p-10 rounded-2xl flex flex-col items-center text-center">
+    
+    <!-- Intestazione -->
+    <h1 class="text-3xl font-extrabold mb-8 text-indigo-400">Generatore di Saggezza</h1>
+    
+    <!-- Placeholder visivo (opzionale, ma migliora l'estetica) -->
+    <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mb-6">
+        <!-- Icona del diamante SVG -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-300" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 1L2 12l10 10l10-10L12 1zm0 14.828L5.172 9.001 12 2.172l6.828 6.829L12 15.828z"/>
+        </svg>
+    </div>
+
+    <!-- Area della Citazione -->
+    <blockquote class="text-gray-300 italic text-xl sm:text-2xl mb-6">
+        <span id="quote-text" class="font-light fade-in">Tocca per scoprire la tua ispirazione quotidiana.</span>
+    </blockquote>
+    
+    <!-- Autore -->
+    <p id="quote-author" class="text-md font-medium text-indigo-400 mb-8">— Autore Sconosciuto</p>
+    
+    <!-- Contenitore Pulsanti -->
+    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full justify-center">
+        
+        <!-- 1. Pulsante Genera Nuova Citazione -->
+        <button id="generate-button" class="generate-btn text-white font-semibold py-3 px-6 rounded-full shadow-md w-full sm:w-auto">
+            Nuova Citazione
+        </button>
+
+        <!-- 2. Pulsante Copia (Aggiunta di Utility) -->
+        <button id="copy-button" class="copy-btn bg-gray-700 text-gray-300 font-semibold py-3 px-6 rounded-full shadow-md flex items-center justify-center w-full sm:w-auto" disabled>
+            <!-- Icona Copia SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4C2.895 1 2 1.895 2 3v14h2V3h12V1zm5 4H8C6.895 5 6 5.895 6 7v14c0 1.105.895 2 2 2h13c1.105 0 2-.895 2-2V7c0-1.105-.895-2-2-2zm0 16H8V7h13v14z"/>
+            </svg>
+            Copia
+        </button>
+    </div>
+</div>
+
+<!-- Notifica di Copia -->
+<div id="notification" class="hidden">Citazione copiata!</div>
+
+<!-- 
+    IMPORTANTE: Questo file carica i dati delle citazioni dal file esterno 'quotes.js'. 
+    Assicurati che entrambi i file siano nella stessa directory.
+-->
+<script src="quotes.js"></script>
+
+<script>
+    // La variabile 'quotes' è ora disponibile grazie al file quotes.js
+
+    const quoteTextElement = document.getElementById('quote-text');
+    const quoteAuthorElement = document.getElementById('quote-author');
+    const generateButton = document.getElementById('generate-button');
+    const copyButton = document.getElementById('copy-button');
+    const notification = document.getElementById('notification');
+    
+    let lastIndex = -1;
+    let currentQuote = "";
+
+    /**
+     * Funzione per generare e visualizzare una nuova citazione.
+     */
+    function displayRandomQuote() {
+        // Rimuove la classe di animazione per il reset
+        quoteTextElement.classList.remove('fade-in');
+        
+        setTimeout(() => {
+            if (!quotes || quotes.length === 0) {
+                quoteTextElement.textContent = "Errore: Dati citazioni non caricati.";
+                quoteAuthorElement.textContent = "— Verifica quotes.js";
+                return;
+            }
+
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * quotes.length);
+            } while (randomIndex === lastIndex && quotes.length > 1);
+            
+            lastIndex = randomIndex;
+            const quote = quotes[randomIndex];
+
+            currentQuote = `${quote.text} — ${quote.author}`;
+            quoteTextElement.textContent = quote.text;
+            quoteAuthorElement.textContent = `— ${quote.author}`;
+
+            // Abilita il pulsante Copia
+            copyButton.disabled = false;
+            copyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            // Aggiunge la classe per l'animazione di ingresso
+            quoteTextElement.classList.add('fade-in');
+        }, 100);
+    }
+
+    /**
+     * Funzione per copiare la citazione negli appunti e mostrare notifica.
+     */
+    function copyQuote() {
+        // Usa il metodo alternativo per la compatibilità con WebView/iframe
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = currentQuote;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        try {
+            // document.execCommand('copy') è più compatibile con gli ambienti iframe
+            document.execCommand('copy'); 
+            showNotification();
+        } catch (err) {
+            console.error('Errore nella copia: ', err);
+            // Fallback per un messaggio di errore interno se la copia fallisce
+        }
+        document.body.removeChild(tempTextArea);
+    }
+
+    /**
+     * Mostra la notifica di copia per un breve periodo.
+     */
+    function showNotification() {
+        notification.classList.remove('hidden');
+        notification.style.opacity = '1';
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }, 1500); // Durata della notifica: 1.5 secondi
+    }
+
+    // Listener degli eventi
+    generateButton.addEventListener('click', displayRandomQuote);
+    copyButton.addEventListener('click', copyQuote);
+
+    // Inizializza l'app al caricamento
+    window.onload = function() {
+        displayRandomQuote();
+    };
+</script>
+
+</body>
+</html>
+
