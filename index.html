@@ -1,11 +1,383 @@
-<html>
+<!DOCTYPE html>
+<html lang="it">
 <head>
-    <title>Title</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore di Citazioni Ispiratrici</title>
+    <!-- Carica Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            min-height: 100vh;
+            padding: 0;
+            color: #ffffff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .quote-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            width: 100vw;
+            min-height: 100vh;
+            max-width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 6vw;
+            box-sizing: border-box;
+        }
+        @media (min-width: 640px) {
+            .quote-card {
+                max-width: 470px;
+                min-height: auto;
+                width: 95%;
+                margin: auto;
+                padding: 2.5rem;
+                border-radius: 1rem; /* Aggiunto rounded corner */
+            }
+        }
+        .generate-btn {
+            background: linear-gradient(90deg, #4c51bf, #6b46c1);
+            transition: all 0.3s ease;
+            transform: scale(1);
+            font-size: 1.18rem;
+        }
+        .generate-btn:hover {
+            box-shadow: 0 4px 15px rgba(107, 70, 193, 0.6);
+            transform: scale(1.03);
+        }
+        .copy-btn {
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .copy-btn:hover:not(:disabled) { /* Aggiunto :not(:disabled) per coerenza */
+            background-color: #38a169;
+            color: #fff;
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 18px 30px;
+            background-color: #38a169;
+            color: white;
+            border-radius: 9999px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+            font-size: 1.18rem;
+        }
+    </style>
 </head>
 <body>
-    <div>
-        <h1>Your Title</h1>
-        <img src="logo.png" alt="Logo" class="w-16 h-16 object-contain" />
+
+<div id="app" class="quote-card flex flex-col items-center text-center">
+    <h1 class="text-3xl sm:text-4xl font-extrabold mb-8 mt-2 text-indigo-400">Generatore di Saggezza</h1>
+    
+    <!-- Area del Logo aggiornata con un placeholder -->
+    <div class="w-20 h-20 sm:w-16 sm:h-16 mb-7 mx-auto flex items-center justify-center">
+        <!-- 
+            Sostituito con un tag <img> che utilizza un placeholder URL.
+            Se hai un link pubblico per logo.png (es. su Imgur o Google Drive), sostituisci l'URL qui sotto.
+        -->
+        <img src="logo.png" alt="Logo" class="w-16 h-16 object-contain" 
+             alt="Logo Ispirazione Placeholder" 
+             class="rounded-full shadow-md w-full h-full object-cover border-2 border-indigo-400 p-1"
+             onerror="this.onerror=null; this.src='https://placehold.co/80x80/161b22/ffffff?text=X'"
+        >
     </div>
+    
+    <blockquote class="text-gray-300 italic text-[1.6rem] sm:text-2xl mb-7">
+        <!-- Inizialmente vuoto, verrà riempito dallo script -->
+        <span id="quote-text" class="font-light"></span>
+    </blockquote>
+    <p id="quote-author" class="text-lg sm:text-xl font-medium text-indigo-400 mb-8"></p>
+    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full justify-center">
+        <button id="generate-button" class="generate-btn text-white font-semibold py-4 px-8 rounded-full shadow-lg w-full sm:w-auto text-lg">
+            Nuova Citazione
+        </button>
+        <button id="copy-button" class="copy-btn bg-gray-700 text-gray-300 font-semibold py-4 px-8 rounded-full shadow-lg flex items-center justify-center w-full sm:w-auto text-lg opacity-50 cursor-not-allowed" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4C2.895 1 2 1.895 2 3v14h2V3h12V1zm5 4H8C6.895 5 6 5.895 6 7v14c0 1.105.895 2 2 2h13c1.105 0 2-.895 2-2V7c0-1.105-.895-2-2-2zm0 16H8V7h13v14z"/>
+            </svg>
+            Copia
+        </button>
+    </div>
+</div>
+
+<div id="notification" class="hidden">Citazione copiata!</div>
+
+<script>
+    // 1. DATA: Array contenente tutte le citazioni (Totale: 167 Citazioni)
+    const quotes = [
+        // Citazioni originali (67)
+        { text: "Il futuro appartiene a coloro che credono nella bellezza dei propri sogni.", author: "Eleanor Roosevelt" },
+        { text: "Sii il cambiamento che vuoi vedere nel mondo.", author: "Mahatma Gandhi" },
+        { text: "La felicità si può trovare anche nei momenti più oscuri, se solo ci si ricorda di accendere la luce.", author: "Albus Silente (J.K. Rowling)" },
+        { text: "Non aspettare. Non sarà mai il momento giusto.", author: "Napoleon Hill" },
+        { text: "Fai della tua vita un sogno, e di un sogno, una realtà.", author: "Antoine de Saint-Exupéry" },
+        { text: "Il modo per iniziare è smettere di parlare e iniziare a fare.", author: "Walt Disney" },
+        { text: "La vita è per il 10% ciò che ti accade e per il 90% come reagisci.", author: "Charles R. Swindoll" },
+        { text: "Le sfide sono ciò che rende la vita interessante e superarle è ciò che rende la vita significativa.", author: "Joshua J. Marine" },
+        { text: "Il successo non consiste nel non commettere errori, ma nel non ripeterli due volte.", author: "George Bernard Shaw" },
+        { text: "Non smettere mai di sorridere, anche quando sei triste, perché non sai chi potrebbe innamorarsi del tuo sorriso.", author: "Gabriel García Márquez" },
+        { text: "Le grandi cose non sono fatte per impulso, ma da una serie di piccole cose messe insieme.", author: "Vincent Van Gogh" },
+        { text: "Nessun vento è favorevole per il marinaio che non sa dove andare.", author: "Seneca" },
+        { text: "Chi ha un perché per vivere può sopportare quasi ogni come.", author: "Friedrich Nietzsche" },
+        { text: "La libertà non consiste nel fare ciò che si vuole, ma nel volere ciò che si deve.", author: "Immanuel Kant" },
+        { text: "Le ferite che non si vedono sono le più profonde.", author: "William Shakespeare" },
+        { text: "Chi non osa nulla, non spera nulla.", author: "Friedrich Schiller" },
+        { text: "L’unico vero fallimento è non provarci mai.", author: "Anonimo" },
+        { text: "Non si vede bene che col cuore. L’essenziale è invisibile agli occhi.", author: "Antoine de Saint-Exupéry" },
+        { text: "Ogni uomo è l’architetto del proprio destino.", author: "Appio Claudio Cieco" },
+        { text: "La mente è come un paracadute: funziona solo se si apre.", author: "Albert Einstein" },
+        { text: "Non è la vita ad essere breve, ma noi che la rendiamo tale.", author: "Seneca" },
+        { text: "La musica può cambiare il mondo perché può cambiare le persone.", author: "Bono Vox" },
+        { text: "La paura è il peggior nemico dell’uomo.", author: "Anonimo" },
+        { text: "Il vero amore comincia quando non ci si aspetta nulla in cambio.", author: "Antoine de Saint-Exupéry" },
+        { text: "Non è la montagna che conquistiamo, ma noi stessi.", author: "Sir Edmund Hillary" },
+        { text: "Ogni giorno è una nuova opportunità per cambiare la tua vita.", author: "Anonimo" },
+        { text: "Il silenzio è la forma più perfetta della parola.", author: "Pitagora" },
+        { text: "Chi teme di soffrire soffre già di ciò che teme.", author: "Michel de Montaigne" },
+        { text: "Non è mai troppo tardi per imparare qualcosa di nuovo.", author: "Anonimo" },
+        { text: "L’educazione è l’arma più potente che si possa usare per cambiare il mondo.", author: "Nelson Mandela" },
+        { text: "La vera felicità costa poco; se è cara, non è di buona qualità.", author: "François-René de Chateaubriand" },
+        { text: "Non ci sono scorciatoie per i luoghi che valgono la pena di essere raggiunti.", author: "Beverly Sills" },
+        { text: "Chi non sa dove andare, rischia di non arrivarci mai.", author: "Anonimo" },
+        { text: "La mente domina il corpo, non il contrario.", author: "Socrate" },
+        { text: "L’amore non consiste nel guardarsi a vicenda, ma nel guardare insieme nella stessa direzione.", author: "Antoine de Saint-Exupéry" },
+        { text: "Ogni difficoltà superata è una vittoria dell’anima.", author: "Anonimo" },
+        { text: "Il modo migliore per predire il futuro è crearlo.", author: "Peter Drucker" },
+        { text: "Non importa quanto vai piano, l’importante è non fermarsi.", author: "Confucio" },
+        { text: "L’esperienza è semplicemente il nome che diamo ai nostri errori.", author: "Oscar Wilde" },
+        { text: "Non c’è niente di più potente di un’idea il cui tempo è arrivato.", author: "Victor Hugo" },
+        { text: "Ogni sogno realizzato è un sogno per cui qualcuno ha lottato.", author: "Anonimo" },
+        { text: "La pace inizia con un sorriso.", author: "Madre Teresa di Calcutta" },
+        { text: "Le parole gentili possono essere brevi e facili da dire, ma la loro eco è infinita.", author: "Madre Teresa di Calcutta" },
+        { text: "Il talento fa vincere le partite, ma il lavoro di squadra e l’intelligenza fanno vincere i campionati.", author: "Michael Jordan" },
+        { text: "L’unico modo per evitare le critiche è non fare nulla, non dire nulla e non essere nulla.", author: "Aristotele" },
+        { text: "Non lasciare che la paura decida il tuo futuro.", author: "Anonimo" },
+        { text: "Ogni persona che incontri sta combattendo una battaglia di cui non sai nulla. Sii gentile.", author: "Platone" },
+        { text: "L’unico uomo che non sbaglia mai è quello che non fa mai nulla.", author: "Theodore Roosevelt" },
+        { text: "Sii te stesso; tutti gli altri sono già occupati.", author: "Oscar Wilde" },
+        { text: "Non seguire il sentiero. Vai invece dove non c’è un sentiero e lascia una traccia.", author: "Ralph Waldo Emerson" },
+        { text: "Il pessimismo porta alla debolezza, l’ottimismo alla potenza.", author: "William James" },
+        { text: "Il tempo che ti diverte è tempo ben speso.", author: "Bertrand Russell" },
+        { text: "Il vero eroe non è colui che non cade mai, ma colui che si rialza sempre.", author: "Anonimo" },
+        { text: "La conoscenza è potere.", author: "Francis Bacon" },
+        { text: "Non c’è progresso senza cambiamento.", author: "Henry Ford" },
+        { text: "L’immaginazione governa il mondo.", author: "Napoleone Bonaparte" },
+        { text: "Un giorno senza sorriso è un giorno perso.", author: "Charlie Chaplin" },
+        { text: "Chi semina amore raccoglie felicità.", author: "Anonimo" },
+        { text: "Non esiste notte così lunga da impedire al sole di risorgere.", author: "Anonimo" },
+        { text: "Non puoi cambiare il vento, ma puoi orientare le vele.", author: "Aristotele" },
+        { text: "La bellezza salverà il mondo.", author: "Fëdor Dostoevskij" },
+        { text: "L’unico limite alla nostra realizzazione di domani saranno i nostri dubbi di oggi.", author: "Franklin D. Roosevelt" },
+        { text: "Non aspettare il momento perfetto, prendilo e rendilo tale.", author: "Anonimo" },
+        { text: "Chi desidera vedere l’arcobaleno deve imparare ad amare la pioggia.", author: "Paulo Coelho" },
+        { text: "Il valore di un uomo si misura in base a quanta verità riesce a dire.", author: "Friedrich Nietzsche" },
+        { text: "L’amicizia raddoppia le gioie e divide le angosce a metà.", author: "Francesco Bacone" },
+        { text: "L’amore è composto da un’unica anima che abita due corpi.", author: "Aristotele" },
+        { text: "Tutti pensano a cambiare il mondo, ma nessuno pensa a cambiare se stesso.", author: "Lev Tolstoj" },
+        { text: "Le persone forti non abbattono gli altri, li sollevano.", author: "Anonimo" },
+        { text: "La mente crea la realtà.", author: "Buddha" },
+        { text: "Dove non c’è lotta, non c’è forza.", author: "Oprah Winfrey" },
+        { text: "Il mondo è pieno di cose magiche, pazientemente in attesa che i nostri sensi si affilino.", author: "W.B. Yeats" },
+
+        // NUOVE 100 CITAZIONI AGGIUNTE ORA
+        { text: "La vera scoperta non consiste nel trovare nuove terre, ma nell'avere nuovi occhi.", author: "Marcel Proust" },
+        { text: "L'unico modo per fare un ottimo lavoro è amare quello che fai.", author: "Steve Jobs" },
+        { text: "Non contare i giorni, fai in modo che i giorni contino.", author: "Muhammad Ali" },
+        { text: "Se puoi sognarlo, puoi farlo.", author: "Walt Disney" },
+        { text: "La felicità è una direzione, non un luogo.", author: "Sydney J. Harris" },
+        { text: "Ogni mattina abbiamo due scelte: continuare a dormire con i nostri sogni o svegliarci e inseguirli.", author: "Anonimo" },
+        { text: "Non è forte chi non cade mai, ma chi si rialza sempre.", author: "Johann Wolfgang von Goethe" },
+        { text: "Credi in te stesso e tutto ciò che sei. Sappi che c'è qualcosa dentro di te che è più grande di qualsiasi ostacolo.", author: "Christian D. Larson" },
+        { text: "Il fallimento è semplicemente l'opportunità di ricominciare con maggiore intelligenza.", author: "Henry Ford" },
+        { text: "La vita è un’eco: se non ti piace quello che ricevi, cambia quello che emetti.", author: "Anonimo" },
+        { text: "La misura di ciò che siamo è ciò che facciamo con ciò che abbiamo.", author: "Vince Lombardi" },
+        { text: "La più grande gloria non sta nel non cadere mai, ma nel rialzarsi ogni volta che si cade.", author: "Nelson Mandela" },
+        { text: "Sii paziente. A volte bisogna passare attraverso il peggio per arrivare al meglio.", author: "Anonimo" },
+        { text: "Non smettere mai di imparare, perché la vita non smette mai di insegnare.", author: "Anonimo" },
+        { text: "Il successo è la somma di piccoli sforzi, ripetuti giorno dopo giorno.", author: "Robert Collier" },
+        { text: "Un cuore che ama è sempre giovane.", author: "Proverbio Greco" },
+        { text: "Fai in modo che la tua vita sia degna di essere raccontata.", author: "Ernest Hemingway" },
+        { text: "Il momento migliore per piantare un albero era vent'anni fa. Il secondo momento migliore è adesso.", author: "Proverbio Cinese" },
+        { text: "Non avrai mai un domani se non lasci andare il tuo ieri.", author: "Anonimo" },
+        { text: "La bellezza è negli occhi di chi guarda.", author: "Oscar Wilde" },
+        { text: "La gentilezza è la lingua che il sordo può sentire e il cieco può vedere.", author: "Mark Twain" },
+        { text: "La vera libertà è non avere nulla da nascondere.", author: "Anonimo" },
+        { text: "La perseveranza non è una lunga corsa; è molte brevi corse una dopo l'altra.", author: "Walter Elliott" },
+        { text: "Non cercare la felicità; creala.", author: "Anonimo" },
+        { text: "La saggezza è sapere di non sapere.", author: "Socrate" },
+        { text: "Non giudicare ogni giorno dalla raccolta che fai, ma dai semi che pianti.", author: "Robert Louis Stevenson" },
+        { text: "L'unica limitazione è quella che ti poni nella tua mente.", author: "Napoleon Hill" },
+        { text: "Il cambiamento non arriverà se aspettiamo altre persone o altri tempi. Siamo noi il cambiamento che aspettiamo.", author: "Barack Obama" },
+        { text: "Non è importante quanto sia lento il tuo passo, purché non ti fermi.", author: "Confucio" },
+        { text: "C'è solo un angolo dell'universo che puoi essere certo di migliorare, ed è te stesso.", author: "Aldous Huxley" },
+        { text: "La vita è un viaggio e solo tu hai la mappa.", author: "Anonimo" },
+        { text: "La gioia è la forma più semplice di gratitudine.", author: "Karl Barth" },
+        { text: "Non temere i momenti difficili. Il meglio viene dalle sfide.", author: "Anonimo" },
+        { text: "Un pessimista vede la difficoltà in ogni opportunità; un ottimista vede l'opportunità in ogni difficoltà.", author: "Winston Churchill" },
+        { text: "L'amore è l'unica forza capace di trasformare un nemico in amico.", author: "Martin Luther King Jr." },
+        { text: "Tutto ciò che è necessario per trionfare è un piano, una piccola scintilla e l'azione.", author: "Anonimo" },
+        { text: "Sii l'eccezione, non la regola.", author: "Anonimo" },
+        { text: "La cosa più difficile è la decisione di agire, il resto è solo tenacia.", author: "Amelia Earhart" },
+        { text: "Non sono le stelle a tenere il nostro destino, ma noi stessi.", author: "William Shakespeare" },
+        { text: "Il coraggio è resistenza alla paura, padronanza della paura, non assenza di paura.", author: "Mark Twain" },
+        { text: "La vita non è trovare te stesso. La vita è creare te stesso.", author: "George Bernard Shaw" },
+        { text: "La felicità è come una farfalla: se la insegui, non la prenderai mai, ma se ti siedi tranquillamente, potrebbe posarsi su di te.", author: "Nathaniel Hawthorne" },
+        { text: "Il successo è camminare da un fallimento all'altro senza perdere l'entusiasmo.", author: "Winston Churchill" },
+        { text: "La pazienza è amara, ma il suo frutto è dolce.", author: "Jean-Jacques Rousseau" },
+        { text: "Chiunque smetta di imparare è vecchio, che abbia venti o ottant'anni. Chiunque continui ad imparare rimane giovane.", author: "Henry Ford" },
+        { text: "L'immaginazione è più importante della conoscenza.", author: "Albert Einstein" },
+        { text: "Il carattere è ciò che sei quando nessuno ti guarda.", author: "Anonimo" },
+        { text: "Non arrenderti mai. Oggi è difficile, domani sarà peggio, ma dopodomani ci sarà il sole.", author: "Jack Ma" },
+        { text: "Le cose migliori della vita sono le persone che amiamo, i posti dove siamo stati e i ricordi che abbiamo fatto lungo la strada.", author: "Anonimo" },
+        { text: "La verità è che non sai cosa succederà domani. La vita è un giro folle, e nulla è garantito.", author: "Eminem" },
+        { text: "Il prezzo della grandezza è la responsabilità.", author: "Winston Churchill" },
+        { text: "Solo chi rischia di andare troppo lontano può scoprire quanto lontano si può andare.", author: "T.S. Eliot" },
+        { text: "Fatti non foste a viver come bruti, ma per seguir virtute e canoscenza.", author: "Dante Alighieri" },
+        { text: "La differenza tra l'ordinario e lo straordinario è quel piccolo 'extra'.", author: "Jimmy Johnson" },
+        { text: "Cogli l'attimo, non sprecare il giorno.", author: "Orazio" },
+        { text: "Non si può attraversare il mare semplicemente stando lì a guardare l'acqua.", author: "Rabindranath Tagore" },
+        { text: "Un viaggio di mille miglia comincia con un singolo passo.", author: "Lao Tzu" },
+        { text: "Il vero significato della vita si trova nella semina, non nel raccolto.", author: "Anonimo" },
+        { text: "La semplicità è la massima sofisticazione.", author: "Leonardo da Vinci" },
+        { text: "Ogni momento è un nuovo inizio.", author: "T.S. Eliot" },
+        { text: "La vita è troppo importante per essere presa sul serio.", author: "Oscar Wilde" },
+        { text: "Non piangere perché è finita, sorridi perché è successo.", author: "Gabriel García Márquez" },
+        { text: "L'energia e la perseveranza conquistano tutte le cose.", author: "Benjamin Franklin" },
+        { text: "La felicità non è qualcosa di pronto. Viene dalle tue azioni.", author: "Dalai Lama" },
+        { text: "Non c'è genio senza un pizzico di follia.", author: "Aristotele" },
+        { text: "La mente non ha limiti, tranne quelli che accettiamo.", author: "Napoleon Hill" },
+        { text: "Il successo è una cattiva maestra. Seduce le persone intelligenti facendole pensare di non poter perdere.", author: "Bill Gates" },
+        { text: "L'azione non è solo la chiave del successo, ma anche la chiave della felicità.", author: "Patrick L. O'Malley" },
+        { text: "La vita è quello che succede mentre sei impegnato a fare altri piani.", author: "John Lennon" },
+        { text: "Non è ciò che ti capita, ma come reagisci che conta.", author: "Epitteto" },
+        { text: "La vita è fatta di scelte. Scegli saggiamente.", author: "Anonimo" },
+        { text: "Quando tutto sembra andare contro di te, ricorda che l'aereo decolla contro vento, non con esso.", author: "Henry Ford" },
+        { text: "La speranza è l'unica cosa più forte della paura.", author: "Suzanne Collins" },
+        { text: "Il meglio deve ancora venire.", author: "Frank Sinatra" },
+        { text: "La bellezza di una persona non è nel vestito che indossa, nella sua figura o nel modo in cui pettina i capelli.", author: "Audrey Hepburn" },
+        { text: "Siamo ciò che facciamo ripetutamente. L'eccellenza, quindi, non è un atto, ma un'abitudine.", author: "Aristotele" },
+        { text: "La gioia nel lavoro mette la perfezione nel lavoro.", author: "Aristotele" },
+        { text: "Non rimpiangere nulla nella vita. Ciò che è buono è meraviglioso. Ciò che è cattivo è esperienza.", author: "Victoria Holt" },
+        { text: "Un libro è un giardino che puoi tenere in tasca.", author: "Proverbio Arabo" },
+        { text: "La curiosità è la miccia di ogni candela di conoscenza.", author: "Anonimo" },
+        { text: "Non c'è cura per l'amore se non amare di più.", author: "Henry David Thoreau" },
+        { text: "Il vero viaggio di scoperta non consiste nel cercare nuovi paesaggi, ma nell'avere nuovi occhi.", author: "Marcel Proust" },
+        { text: "Ogni passo che fai oggi ti porta più vicino a dove vuoi essere domani.", author: "Anonimo" },
+        { text: "La vita è un’avventura audace o niente.", author: "Helen Keller" },
+        { text: "La fantasia è una forma di consolazione.", author: "Milan Kundera" },
+        { text: "Le uniche persone che non hanno problemi sono quelle che sono morte.", author: "Anonimo" },
+        { text: "Non c'è nulla di nobile nell'essere superiore ad un altro uomo. La vera nobiltà è l'essere superiore al tuo precedente io.", author: "Ernest Hemingway" },
+        { text: "La semplicità è la chiave della vera eleganza.", author: "Coco Chanel" },
+        { text: "Non si può trovare la pace evitando la vita.", author: "Virginia Woolf" },
+        { text: "Il successo è la realizzazione progressiva di un degno ideale.", author: "Earl Nightingale" },
+        { text: "Non giudicare il giorno dal raccolto, ma dal seme piantato.", author: "Robert Louis Stevenson" },
+        { text: "Chi vive vede, ma chi viaggia vede di più.", author: "Proverbio Arabo" },
+        { text: "Sii affamato. Sii folle.", author: "Steve Jobs" },
+        { text: "La felicità non è una stazione a cui si arriva, ma un modo di viaggiare.", author: "Margaret Lee Runbeck" },
+        { text: "Non aver paura di rinunciare al bene per inseguire il grande.", author: "John D. Rockefeller" },
+        { text: "Quando desideri qualcosa, tutto l'universo cospira affinché tu realizzi il tuo desiderio.", author: "Paulo Coelho" },
+        { text: "La tua vita non migliora per caso, migliora per il cambiamento.", author: "Jim Rohn" },
+        { text: "Un piccolo sforzo ogni giorno ti darà risultati enormi.", author: "Anonimo" },
+        { text: "Non smettere di credere nella magia.", author: "Anonimo" },
+        { text: "L'ottimismo è la fede che porta alla realizzazione. Nulla può essere fatto senza speranza e fiducia.", author: "Helen Keller" }
+    ];
+
+    // 2. LOGICA (il tuo script originale)
+    const quoteTextElement = document.getElementById('quote-text');
+    const quoteAuthorElement = document.getElementById('quote-author');
+    const generateButton = document.getElementById('generate-button');
+    const copyButton = document.getElementById('copy-button');
+    const notification = document.getElementById('notification');
+    let lastIndex = -1;
+    let currentQuote = "";
+
+    function displayRandomQuote() {
+        // Rimuovi la classe per consentire la ri-animazione
+        quoteTextElement.classList.remove('fade-in'); 
+
+        setTimeout(() => {
+            // Check di sicurezza (non più necessario ma utile)
+            if (!quotes || quotes.length === 0) {
+                quoteTextElement.textContent = "Errore: Dati citazioni mancanti.";
+                quoteAuthorElement.textContent = "— Controlla l'array 'quotes'";
+                return;
+            }
+
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * quotes.length);
+            } while (randomIndex === lastIndex && quotes.length > 1);
+            lastIndex = randomIndex;
+
+            const quote = quotes[randomIndex];
+            currentQuote = `${quote.text} — ${quote.author}`;
+            quoteTextElement.textContent = quote.text;
+            quoteAuthorElement.textContent = `— ${quote.author}`;
+            
+            // Abilita il pulsante e rimuovi lo stato disabilitato
+            copyButton.disabled = false;
+            copyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            // Aggiungi la classe per l'animazione di fade-in
+            quoteTextElement.classList.add('fade-in'); 
+        }, 100);
+    }
+
+    function copyQuote() {
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = currentQuote;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        try {
+            // Utilizzo di document.execCommand('copy') per la compatibilità in ambiente iframe
+            document.execCommand('copy'); 
+            showNotification();
+        } catch (err) {
+            console.error('Errore nella copia: ', err);
+        }
+        document.body.removeChild(tempTextArea);
+    }
+
+    function showNotification() {
+        notification.classList.remove('hidden');
+        notification.style.opacity = '1';
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }, 1500);
+    }
+
+    // 3. EVENT LISTENERS
+    generateButton.addEventListener('click', displayRandomQuote);
+    copyButton.addEventListener('click', copyQuote);
+
+    window.onload = function() {
+        // Visualizza la prima citazione all'avvio
+        displayRandomQuote();
+    };
+</script>
 </body>
 </html>
